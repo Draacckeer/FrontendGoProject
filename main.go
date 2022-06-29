@@ -8,11 +8,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"text/template"
 )
 
 var templates = template.Must(template.ParseGlob("templates/*"))
-var id = 0
 
 func main() {
 	/*response, err := http.Get(`https://gettingbetterapi.azurewebsites.net/api/v1/coaches`)
@@ -44,11 +44,18 @@ func main() {
 type UserResponse struct {
 	Id       int    `json:"id"`
 	Username string `json:"username"`
+	Password string `json:"password"`
+	Money    int    `json:"money"`
+}
+
+type Data struct {
+	Id           string
+	UserResponse []UserResponse
 }
 
 func Start(w http.ResponseWriter, r *http.Request) {
 
-	endpoint := "https://ksero.herokuapp.com/api/v1/users/auth/get-all"
+	endpoint := "https://go-project-backend.herokuapp.com/api/v1/users"
 	resp, err := http.Get(endpoint)
 
 	if err != nil {
@@ -63,15 +70,20 @@ func Start(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	fmt.Println(string(body))
-	var userResponse []UserResponse
-	errUnmarshal := json.Unmarshal(body, &userResponse)
+	var data Data
+	errUnmarshal := json.Unmarshal(body, &data.UserResponse)
 	if errUnmarshal != nil {
 		log.Fatal(errUnmarshal)
 	}
-	log.Printf("%v", userResponse)
 
-	templates.ExecuteTemplate(w, "start", userResponse)
+	data.Id = r.URL.Query().Get("id")
+	if data.Id == "" {
+		data.Id = "-1"
+	}
+
+	log.Println(r.FormValue("username"))
+
+	templates.ExecuteTemplate(w, "start", data)
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -84,22 +96,16 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 	values := map[string]string{
-		"firstName":    r.FormValue("username"),
-		"lastName":     r.FormValue("password"),
-		"selectedGame": "go3",
-		"nickName":     "go4",
-		"email":        "go5",
-		"password":     "go6",
-		"userImage":    "gox",
-		"bibliography": "goy"}
+		"username": r.FormValue("username"),
+		"password": r.FormValue("password"),
+		"money":    "0"}
 	json_data, err := json.Marshal(values)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 	// Insert The Backend Url Here
-	//endpoint := "https://gettingbetterapi.azurewebsites.net/api/v1/coaches"
-	endpoint := "Dont Click"
+	endpoint := "https://go-project-backend.herokuapp.com/api/v1/users"
 	resp, err := http.Post(endpoint, "application/json",
 		bytes.NewBuffer(json_data))
 
@@ -118,7 +124,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func ConfirmCredentials(w http.ResponseWriter, r *http.Request) {
-	endpoint := "https://ksero.herokuapp.com/api/v1/users/auth/get-all"
+	endpoint := "https://go-project-backend.herokuapp.com/api/v1/users"
 	resp, err := http.Get(endpoint)
 
 	if err != nil {
@@ -140,12 +146,14 @@ func ConfirmCredentials(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(errUnmarshal)
 	}
 	log.Printf("%v", userResponse)
+	id := -1
 	for i, s := range userResponse {
 		fmt.Println(i, s.Username)
-		if s.Username == r.FormValue("username") {
-			fmt.Println("Username Found!")
+		if s.Username == r.FormValue("username") && s.Password == r.FormValue("password") {
+			id = s.Id
 		}
 	}
 	fmt.Println(r.FormValue("username"))
-	http.Redirect(w, r, "/", http.StatusMovedPermanently)
+
+	http.Redirect(w, r, "/?id="+strconv.Itoa(id), http.StatusMovedPermanently)
 }

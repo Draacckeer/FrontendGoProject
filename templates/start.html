@@ -1,23 +1,23 @@
 {{ define "start" }}
 {{ template "header" }}
-        <a name="" id="" class="btn btn-primary" href="/create" role="button">Add User</a>
-
+        <h3>Logged as Id {{.Id}}</h3>
+        <br>
         <table class="table">
         <thead>
             <tr>
                 <th>ID</th>
                 <th>Username</th>
-                <th>Email</th>
+                <th>Password</th>
                 <th>Send Money</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
-            {{range.}}
+            {{range.UserResponse}}
             <tr>
                 <td>{{.Id}}</td>
                 <td>{{.Username}}</td>
-                <td>dracker@gmail.com</td>
+                <td>{{.Password}}</td>
                 <td><div class="form-group">
                   <label for=""></label>
                   <input type="number"
