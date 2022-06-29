@@ -6,18 +6,29 @@
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Nombre</th>
-                <th>Correo</th>
-                <th>Acciones</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Send Money</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
+            {{range.}}
             <tr>
-                <td>1</td>
-                <td>Dracker asd</td>
+                <td>{{.Id}}</td>
+                <td>{{.Username}}</td>
                 <td>dracker@gmail.com</td>
-                <td> Editar | Borrar </td>
+                <td><div class="form-group">
+                  <label for=""></label>
+                  <input type="number"
+                    class="form-control" name="tokens" id="tokens" aria-describedby="helpId" placeholder="">
+                  <small id="helpId" class="form-text text-muted">Insert The Tokens Here</small>
+                </div></td>
+                <td>  
+                    <a name="" id="" class="btn btn-success" href="#" role="button">Send</a>
+                </td>
             </tr>
+            {{end}}
         </tbody>
         </table>
 {{ template "footer" }}

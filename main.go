@@ -27,7 +27,7 @@ func main() {
 	fmt.Println(string(bytes))*/
 
 	http.HandleFunc("/", Start)
-	http.HandleFunc("/create", Create)
+	http.HandleFunc("/create-user", CreateUser)
 	http.HandleFunc("/confirm-credentials", ConfirmCredentials)
 	http.HandleFunc("/login", Login)
 	http.HandleFunc("/register", Register)
@@ -41,8 +41,37 @@ func main() {
 	http.ListenAndServe(":"+port, nil)
 }
 
+type UserResponse struct {
+	Id       int    `json:"id"`
+	Username string `json:"username"`
+}
+
 func Start(w http.ResponseWriter, r *http.Request) {
-	templates.ExecuteTemplate(w, "start", nil)
+
+	endpoint := "https://ksero.herokuapp.com/api/v1/users/auth/get-all"
+	resp, err := http.Get(endpoint)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(string(body))
+	var userResponse []UserResponse
+	errUnmarshal := json.Unmarshal(body, &userResponse)
+	if errUnmarshal != nil {
+		log.Fatal(errUnmarshal)
+	}
+	log.Printf("%v", userResponse)
+
+	templates.ExecuteTemplate(w, "start", userResponse)
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -53,10 +82,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	templates.ExecuteTemplate(w, "register", nil)
 }
 
-func Create(w http.ResponseWriter, r *http.Request) {
+func CreateUser(w http.ResponseWriter, r *http.Request) {
 	values := map[string]string{
-		"firstName":    "golang1",
-		"lastName":     "go2testx",
+		"firstName":    r.FormValue("username"),
+		"lastName":     r.FormValue("password"),
 		"selectedGame": "go3",
 		"nickName":     "go4",
 		"email":        "go5",
@@ -68,6 +97,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// Insert The Backend Url Here
 	//endpoint := "https://gettingbetterapi.azurewebsites.net/api/v1/coaches"
 	endpoint := "Dont Click"
 	resp, err := http.Post(endpoint, "application/json",
@@ -104,5 +134,18 @@ func ConfirmCredentials(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println(string(body))
+	var userResponse []UserResponse
+	errUnmarshal := json.Unmarshal(body, &userResponse)
+	if errUnmarshal != nil {
+		log.Fatal(errUnmarshal)
+	}
+	log.Printf("%v", userResponse)
+	for i, s := range userResponse {
+		fmt.Println(i, s.Username)
+		if s.Username == r.FormValue("username") {
+			fmt.Println("Username Found!")
+		}
+	}
+	fmt.Println(r.FormValue("username"))
 	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 }
