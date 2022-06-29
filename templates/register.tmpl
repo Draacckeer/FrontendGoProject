@@ -1,12 +1,12 @@
-{{ define "create" }}
+{{ define "register" }}
 {{template "header"}}
 <div class="card">
     <div class="card-header">
-        Users
+        Register
     </div>
 
     <div class="card-body">
-        <form method="post" action="/insert">
+        <form method="post" action="/create">
             <div class="form-group">
               <label for="">Name:</label>
               <input type="text"
