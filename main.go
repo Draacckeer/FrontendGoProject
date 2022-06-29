@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"text/template"
 )
 
@@ -23,7 +24,13 @@ func main() {
 	http.HandleFunc("/", Start)
 	http.HandleFunc("/create", Create)
 	fmt.Println("Servidor corriendo...")
-	http.ListenAndServe(":8080", nil)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	http.ListenAndServe(":"+port, nil)
 }
 
 func Start(w http.ResponseWriter, r *http.Request) {
