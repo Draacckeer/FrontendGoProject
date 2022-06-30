@@ -215,6 +215,75 @@ func Blockchain(w http.ResponseWriter, r *http.Request) {
 
 func SendTokens(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.FormValue("tokens"))
+	idReceiver := r.URL.Query().Get("id")
+	if id == "-1" {
+		http.Redirect(w, r, "/", http.StatusMovedPermanently)
+		return
+	}
+	fmt.Println(id + " Sends to " + idReceiver + " " + r.FormValue("tokens") + " tokens")
+
+	// GET BLOCKS
+	urlBlocks := "https://go-project-backend.herokuapp.com/api/v1/blocks"
+	respBlocks, err := http.Get(urlBlocks)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer respBlocks.Body.Close()
+
+	bodyBlocks, err := ioutil.ReadAll(respBlocks.Body)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var blockResponse []BlockResponse
+	errUnmarshalBlocks := json.Unmarshal(bodyBlocks, &blockResponse)
+	if errUnmarshalBlocks != nil {
+		log.Fatal(errUnmarshalBlocks)
+	}
+
+	var chain BlockChain
+
+	for i, s := range blockResponse {
+		if i == 0 {
+			chain = *InitBlockChain(s.Data)
+		} else {
+			chain.AddBlock(s.Data)
+		}
+	}
+	// END GET BLOCKS
+
+	// CREATE BLOCK
+	chain.AddBlock(id + " sends to " + idReceiver + ", " + r.FormValue("tokens") + " tokens")
+
+	prevHash := fmt.Sprintf("%x", chain.blocks[len(chain.blocks)-1].PrevHash)
+	data := string(chain.blocks[len(chain.blocks)-1].Data)
+	hash := fmt.Sprintf("%x", chain.blocks[len(chain.blocks)-1].Hash)
+
+	// POST BLOCK
+	values := map[string]string{
+		"hash":     hash,
+		"data":     data,
+		"prevHash": prevHash}
+	json_data, err := json.Marshal(values)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	endpoint := "https://go-project-backend.herokuapp.com/api/v1/blocks"
+	resp, err := http.Post(endpoint, "application/json",
+		bytes.NewBuffer(json_data))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+	// END POST BLOCK
+
 	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 }
 
@@ -227,6 +296,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateUser(w http.ResponseWriter, r *http.Request) {
+	// POST USERS
 	values := map[string]string{
 		"username": r.FormValue("username"),
 		"password": r.FormValue("password"),
@@ -236,7 +306,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Insert The Backend Url Here
+
 	endpoint := "https://go-project-backend.herokuapp.com/api/v1/users"
 	resp, err := http.Post(endpoint, "application/json",
 		bytes.NewBuffer(json_data))
@@ -244,7 +314,9 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// END POST USERS
 
+	// Read post response
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -260,6 +332,68 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id = fmt.Sprint(userResponse.Id)
+
+	// GET BLOCKS
+	urlBlocks := "https://go-project-backend.herokuapp.com/api/v1/blocks"
+	respBlocks, err := http.Get(urlBlocks)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer respBlocks.Body.Close()
+
+	bodyBlocks, err := ioutil.ReadAll(respBlocks.Body)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var blockResponse []BlockResponse
+	errUnmarshalBlocks := json.Unmarshal(bodyBlocks, &blockResponse)
+	if errUnmarshalBlocks != nil {
+		log.Fatal(errUnmarshalBlocks)
+	}
+
+	var chain BlockChain
+
+	for i, s := range blockResponse {
+		if i == 0 {
+			chain = *InitBlockChain(s.Data)
+		} else {
+			chain.AddBlock(s.Data)
+		}
+	}
+	// END GET BLOCKS
+
+	// CREATE BLOCK
+	chain.AddBlock("0" + " sends to " + id + ", " + r.FormValue("tokens") + " tokens")
+
+	prevHash := fmt.Sprintf("%x", chain.blocks[len(chain.blocks)-1].PrevHash)
+	data := string(chain.blocks[len(chain.blocks)-1].Data)
+	hash := fmt.Sprintf("%x", chain.blocks[len(chain.blocks)-1].Hash)
+
+	// POST BLOCK
+	values2 := map[string]string{
+		"hash":     hash,
+		"data":     data,
+		"prevHash": prevHash}
+	json_data2, err := json.Marshal(values2)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	endpoint2 := "https://go-project-backend.herokuapp.com/api/v1/blocks"
+	resp2, err := http.Post(endpoint2, "application/json",
+		bytes.NewBuffer(json_data2))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp2.Body.Close()
+	// END POST BLOCK
 
 	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 
