@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"text/template"
 )
 
@@ -80,6 +81,13 @@ type UserResponse struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Tokens   int    `json:"tokens"`
+}
+
+type User struct {
+	Id       int
+	Username string
+	Password string
+	Tokens   int
 }
 
 type BlockResponse struct {
@@ -255,6 +263,55 @@ func SendTokens(w http.ResponseWriter, r *http.Request) {
 	}
 	// END GET BLOCKS
 
+	// GET USERS
+	endpointUser := "https://go-project-backend.herokuapp.com/api/v1/users"
+	resp2, err := http.Get(endpointUser)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp2.Body.Close()
+
+	body, err := ioutil.ReadAll(resp2.Body)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var userResponse []UserResponse
+	errUnmarshal := json.Unmarshal(body, &userResponse)
+	if errUnmarshal != nil {
+		log.Fatal(errUnmarshal)
+	}
+	log.Printf("%v", userResponse)
+
+	tokensInt, err := strconv.Atoi(r.FormValue("tokens"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	var userSender UserResponse
+	var userReceiver UserResponse
+	canDoTransaction := false
+
+	for i, s := range userResponse {
+		fmt.Println(i, s.Id)
+		if fmt.Sprint(s.Id) == id && s.Tokens >= tokensInt {
+			userSender = s
+			canDoTransaction = true
+		}
+		if fmt.Sprint(s.Id) == idReceiver {
+			userReceiver = s
+		}
+	}
+
+	if !canDoTransaction || userSender.Id == userReceiver.Id {
+		http.Redirect(w, r, "/", http.StatusMovedPermanently)
+		return
+	}
+	userSender.Tokens -= tokensInt
+	userReceiver.Tokens += tokensInt
+	// END GET USERS
 	// CREATE BLOCK
 	chain.AddBlock(id + " sends to " + idReceiver + ", " + r.FormValue("tokens") + " tokens")
 
@@ -283,6 +340,58 @@ func SendTokens(w http.ResponseWriter, r *http.Request) {
 
 	defer resp.Body.Close()
 	// END POST BLOCK
+	// PUT USER SENDER
+
+	// initialize http client
+	client := &http.Client{}
+
+	// marshal User to json
+	json2, err := json.Marshal(userReceiver)
+	if err != nil {
+		panic(err)
+	}
+	json, err := json.Marshal(userSender)
+	if err != nil {
+		panic(err)
+	}
+
+	urlSender := "https://go-project-backend.herokuapp.com/api/v1/users/" + id
+	fmt.Println(urlSender)
+
+	// set the HTTP method, url, and request body
+	req, err := http.NewRequest(http.MethodPut, urlSender, bytes.NewBuffer(json))
+	if err != nil {
+		panic(err)
+	}
+
+	// set the request header Content-Type for json
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	resp3, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp3.StatusCode)
+
+	// END PUT USER SENDER
+	// PUT USER RECEIVER
+
+	// marshal User to json
+
+	// set the HTTP method, url, and request body
+	urlReceiver := "https://go-project-backend.herokuapp.com/api/v1/users/" + idReceiver
+	req2, err := http.NewRequest(http.MethodPut, urlReceiver, bytes.NewBuffer(json2))
+	if err != nil {
+		panic(err)
+	}
+
+	// set the request header Content-Type for json
+	req2.Header.Set("Content-Type", "application/json; charset=utf-8")
+	resp4, err := client.Do(req2)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp4.StatusCode)
+	// END PUT USER RECEIVER
 
 	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 }
@@ -400,6 +509,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func ConfirmCredentials(w http.ResponseWriter, r *http.Request) {
+	// GET USERS
 	endpoint := "https://go-project-backend.herokuapp.com/api/v1/users"
 	resp, err := http.Get(endpoint)
 
@@ -420,7 +530,7 @@ func ConfirmCredentials(w http.ResponseWriter, r *http.Request) {
 	if errUnmarshal != nil {
 		log.Fatal(errUnmarshal)
 	}
-	log.Printf("%v", userResponse)
+	// END GET USERS
 	for i, s := range userResponse {
 		fmt.Println(i, s.Username)
 		if s.Username == r.FormValue("username") && s.Password == r.FormValue("password") {
