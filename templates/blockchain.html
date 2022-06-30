@@ -5,18 +5,18 @@
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Hash</th>
-                <th>Data</th>
                 <th>Previous Hash</th>
+                <th>Data</th>
+                <th>Hash</th>
             </tr>
         </thead>
         <tbody>
             {{range.}}
             <tr>
                 <td>{{.Id}}</td>
-                <td>{{.Hash}}</td>
-                <td>{{.Data}}</td>
                 <td>{{.PrevHash}}</td>
+                <td>{{.Data}}</td>
+                <td>{{.Hash}}</td>
             </tr>
             {{end}}
         </tbody>
