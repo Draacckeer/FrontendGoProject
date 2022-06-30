@@ -8,7 +8,8 @@
                 <th>ID</th>
                 <th>Username</th>
                 <th>Password</th>
-                <th>Send Money</th>
+                <th>Tokens</th>
+                <th>Send Tokens</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -18,6 +19,8 @@
                 <td>{{.Id}}</td>
                 <td>{{.Username}}</td>
                 <td>{{.Password}}</td>
+                <td>{{.Tokens}}</td>
+                <form method="post" action="/send-tokens?id={{.Id}}">
                 <td><div class="form-group">
                   <label for=""></label>
                   <input type="number"
@@ -25,8 +28,9 @@
                   <small id="helpId" class="form-text text-muted">Insert The Tokens Here</small>
                 </div></td>
                 <td>  
-                    <a name="" id="" class="btn btn-success" href="#" role="button">Send</a>
+                    <button type="submit" class="btn btn-primary">Send</button>
                 </td>
+                </form>
             </tr>
             {{end}}
         </tbody>

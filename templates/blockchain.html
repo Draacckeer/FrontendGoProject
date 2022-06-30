@@ -1,0 +1,25 @@
+{{ define "blockchain" }}
+{{ template "header" }}
+
+        <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Hash</th>
+                <th>Data</th>
+                <th>Previous Hash</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range.}}
+            <tr>
+                <td>{{.Id}}</td>
+                <td>{{.Hash}}</td>
+                <td>{{.Data}}</td>
+                <td>{{.PrevHash}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+        </table>
+{{ template "footer" }}
+{{end}}

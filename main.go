@@ -9,11 +9,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"text/template"
 )
 
 var templates = template.Must(template.ParseGlob("templates/*"))
+var id string = "-1"
 
 func main() {
 
@@ -22,6 +22,8 @@ func main() {
 	http.HandleFunc("/confirm-credentials", ConfirmCredentials)
 	http.HandleFunc("/login", Login)
 	http.HandleFunc("/register", Register)
+	http.HandleFunc("/blockchain", Blockchain)
+	http.HandleFunc("/send-tokens", SendTokens)
 	fmt.Println("Servidor corriendo...")
 
 	port := os.Getenv("PORT")
@@ -77,7 +79,7 @@ type UserResponse struct {
 	Id       int    `json:"id"`
 	Username string `json:"username"`
 	Password string `json:"password"`
-	Money    int    `json:"money"`
+	Tokens   int    `json:"tokens"`
 }
 
 type BlockResponse struct {
@@ -117,18 +119,18 @@ func Start(w http.ResponseWriter, r *http.Request) {
 	var chain BlockChain
 
 	for i, s := range blockResponse {
-		fmt.Println(i, s.Data)
+		//fmt.Println(i, s.Data)
 		if i == 0 {
 			chain = *InitBlockChain(s.Data)
 		} else {
 			chain.AddBlock(s.Data)
 		}
 	}
-	for _, block := range chain.blocks {
+	/*for _, block := range chain.blocks {
 		fmt.Printf("Previous Hash: %x\n", block.PrevHash)
 		fmt.Printf("Data in Block: %s\n", block.Data)
 		fmt.Printf("Hash: %x\n", block.Hash)
-	}
+	}*/
 
 	/*chain := InitBlockChain("Genesis")
 	chain.AddBlock("First Block after Genesis")
@@ -162,7 +164,7 @@ func Start(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(errUnmarshal)
 	}
 
-	data.Id = r.URL.Query().Get("id")
+	data.Id = id
 	if data.Id == "" {
 		data.Id = "-1"
 	}
@@ -170,6 +172,50 @@ func Start(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.FormValue("username"))
 
 	templates.ExecuteTemplate(w, "start", data)
+}
+
+func Blockchain(w http.ResponseWriter, r *http.Request) {
+	urlBlocks := "https://go-project-backend.herokuapp.com/api/v1/blocks"
+	respBlocks, err := http.Get(urlBlocks)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer respBlocks.Body.Close()
+
+	bodyBlocks, err := ioutil.ReadAll(respBlocks.Body)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var blockResponse []BlockResponse
+	errUnmarshalBlocks := json.Unmarshal(bodyBlocks, &blockResponse)
+	if errUnmarshalBlocks != nil {
+		log.Fatal(errUnmarshalBlocks)
+	}
+
+	var chain BlockChain
+
+	for i, s := range blockResponse {
+		if i == 0 {
+			chain = *InitBlockChain(s.Data)
+		} else {
+			chain.AddBlock(s.Data)
+		}
+	}
+	/*for _, block := range chain.blocks {
+		fmt.Printf("Previous Hash: %x\n", block.PrevHash)
+		fmt.Printf("Data in Block: %s\n", block.Data)
+		fmt.Printf("Hash: %x\n", block.Hash)
+	}*/
+	templates.ExecuteTemplate(w, "blockchain", blockResponse)
+}
+
+func SendTokens(w http.ResponseWriter, r *http.Request) {
+	fmt.Println(r.FormValue("tokens"))
+	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -184,7 +230,7 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 	values := map[string]string{
 		"username": r.FormValue("username"),
 		"password": r.FormValue("password"),
-		"money":    "0"}
+		"tokens":   r.FormValue("tokens")}
 	json_data, err := json.Marshal(values)
 
 	if err != nil {
@@ -199,11 +245,21 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	var res map[string]interface{}
+	defer resp.Body.Close()
 
-	json.NewDecoder(resp.Body).Decode(&res)
+	body, err := ioutil.ReadAll(resp.Body)
 
-	fmt.Println(res["json"])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var userResponse UserResponse
+	errUnmarshal := json.Unmarshal(body, &userResponse)
+	if errUnmarshal != nil {
+		log.Fatal(errUnmarshal)
+	}
+
+	id = fmt.Sprint(userResponse.Id)
 
 	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 
@@ -225,21 +281,19 @@ func ConfirmCredentials(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	fmt.Println(string(body))
 	var userResponse []UserResponse
 	errUnmarshal := json.Unmarshal(body, &userResponse)
 	if errUnmarshal != nil {
 		log.Fatal(errUnmarshal)
 	}
 	log.Printf("%v", userResponse)
-	id := -1
 	for i, s := range userResponse {
 		fmt.Println(i, s.Username)
 		if s.Username == r.FormValue("username") && s.Password == r.FormValue("password") {
-			id = s.Id
+			id = fmt.Sprint(s.Id)
 		}
 	}
 	fmt.Println(r.FormValue("username"))
 
-	http.Redirect(w, r, "/?id="+strconv.Itoa(id), http.StatusMovedPermanently)
+	http.Redirect(w, r, "/", http.StatusMovedPermanently)
 }
