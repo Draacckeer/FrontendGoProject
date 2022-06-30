@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,16 +16,6 @@ import (
 var templates = template.Must(template.ParseGlob("templates/*"))
 
 func main() {
-	/*response, err := http.Get(`https://gettingbetterapi.azurewebsites.net/api/v1/coaches`)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(response.Body)
-	bytes, errRead := ioutil.ReadAll(response.Body)
-	if errRead != nil {
-		fmt.Println(errRead)
-	}
-	fmt.Println(string(bytes))*/
 
 	http.HandleFunc("/", Start)
 	http.HandleFunc("/create-user", CreateUser)
@@ -41,11 +32,59 @@ func main() {
 	http.ListenAndServe(":"+port, nil)
 }
 
+type BlockChain struct {
+	blocks []*Block
+}
+
+type Block struct {
+	Hash     []byte
+	Data     []byte
+	PrevHash []byte
+}
+
+func (b *Block) DeriveHash() {
+	info := bytes.Join([][]byte{b.Data, b.PrevHash}, []byte{})
+	hash := sha256.Sum256(info)
+	b.Hash = hash[:]
+}
+
+func CreateBlock(data string, prevHash []byte) *Block {
+	block := &Block{[]byte{}, []byte(data), prevHash}
+	block.DeriveHash()
+	return block
+}
+
+func RequestBlock(hash []byte, data string, prevhash []byte) *Block {
+	block := &Block{hash, []byte(data), prevhash}
+	return block
+}
+
+func (chain *BlockChain) AddBlock(data string) {
+	prevBlock := chain.blocks[len(chain.blocks)-1]
+	new := CreateBlock(data, prevBlock.Hash)
+	chain.blocks = append(chain.blocks, new)
+}
+
+func Genesis(genesis string) *Block {
+	return CreateBlock(genesis, []byte{})
+}
+
+func InitBlockChain(genesis string) *BlockChain {
+	return &BlockChain{[]*Block{Genesis(genesis)}}
+}
+
 type UserResponse struct {
 	Id       int    `json:"id"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Money    int    `json:"money"`
+}
+
+type BlockResponse struct {
+	Id       int    `json:"id"`
+	Hash     string `json:"hash"`
+	Data     string `json:"data"`
+	PrevHash string `json:"prevHash"`
 }
 
 type Data struct {
@@ -54,6 +93,53 @@ type Data struct {
 }
 
 func Start(w http.ResponseWriter, r *http.Request) {
+	urlBlocks := "https://go-project-backend.herokuapp.com/api/v1/blocks"
+	respBlocks, err := http.Get(urlBlocks)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer respBlocks.Body.Close()
+
+	bodyBlocks, err := ioutil.ReadAll(respBlocks.Body)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var blockResponse []BlockResponse
+	errUnmarshalBlocks := json.Unmarshal(bodyBlocks, &blockResponse)
+	if errUnmarshalBlocks != nil {
+		log.Fatal(errUnmarshalBlocks)
+	}
+
+	var chain BlockChain
+
+	for i, s := range blockResponse {
+		fmt.Println(i, s.Data)
+		if i == 0 {
+			chain = *InitBlockChain(s.Data)
+		} else {
+			chain.AddBlock(s.Data)
+		}
+	}
+	for _, block := range chain.blocks {
+		fmt.Printf("Previous Hash: %x\n", block.PrevHash)
+		fmt.Printf("Data in Block: %s\n", block.Data)
+		fmt.Printf("Hash: %x\n", block.Hash)
+	}
+
+	/*chain := InitBlockChain("Genesis")
+	chain.AddBlock("First Block after Genesis")
+	chain.AddBlock("Second Block after Genesis")
+	chain.AddBlock("Third Block after Genesis")
+
+	for _, block := range chain.blocks {
+		fmt.Printf("Previous Hash: %x\n", block.PrevHash)
+		fmt.Printf("Data in Block: %s\n", block.Data)
+		fmt.Printf("Hash: %x\n", block.Hash)
+	}*/
 
 	endpoint := "https://go-project-backend.herokuapp.com/api/v1/users"
 	resp, err := http.Get(endpoint)
